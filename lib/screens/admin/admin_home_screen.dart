@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_theme.dart';
+import 'create_staff_screen.dart';
 
 class AdminHomeScreen extends ConsumerWidget {
   const AdminHomeScreen({super.key});
@@ -55,6 +56,18 @@ class AdminHomeScreen extends ConsumerWidget {
               subtitle: 'Toggle sold-out status per item',
               color: Colors.green,
             ),
+            const SizedBox(height: 12),
+            _MenuCard(
+              icon: Icons.manage_accounts,
+              title: 'Manage Accounts',
+              subtitle: 'Create employee and rider accounts',
+              color: Colors.purple,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const CreateStaffScreen()),
+              ),
+            ),
           ],
         ),
       ),
@@ -68,12 +81,14 @@ class _MenuCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final Color color;
+  final VoidCallback? onTap;
 
   const _MenuCard({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.color,
+    this.onTap,
   });
 
   @override
@@ -89,7 +104,7 @@ class _MenuCard extends StatelessWidget {
         subtitle: Text(subtitle),
         trailing:
             const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }

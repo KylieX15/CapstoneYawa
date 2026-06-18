@@ -6,6 +6,8 @@ import 'providers/auth_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/admin/admin_home_screen.dart';
 import 'screens/customer/customer_home_screen.dart';
+import 'screens/employee/employee_home_screen.dart';
+import 'screens/rider/rider_home_screen.dart';
 import 'utils/app_theme.dart';
 
 void main() async {
@@ -59,6 +61,8 @@ class RoleRouter extends ConsumerWidget {
       data: (user) {
         if (user == null) return const LoginScreen();
         if (user.role == 'admin') return const AdminHomeScreen();
+        if (user.role == 'employee') return const EmployeeHomeScreen();
+        if (user.role == 'rider') return const RiderHomeScreen();
         return const CustomerHomeScreen();
       },
       loading: () => const _SplashScreen(),

@@ -18,16 +18,34 @@ service cloud.firestore {
       return isAuthenticated() && getRole() == 'admin';
     }
 
+    function isEmployee() {
+      return isAuthenticated() && getRole() == 'employee';
+    }
+
+    function isRider() {
+      return isAuthenticated() && getRole() == 'rider';
+    }
+
+    // Admin or employee — can manage orders
+    function isStaff() {
+      return isAdmin() || isEmployee();
+    }
+
     // ── users ─────────────────────────────────────────────────────────────────
     match /users/{uid} {
-      // A user may read their own document; admins may read all.
+      // Each user reads their own doc; admins read all.
       allow read: if isOwner(uid) || isAdmin();
 
-      // Registration: a user may only create their own doc with role 'customer'.
+      // Self-registration: customers only.
       allow create: if isOwner(uid)
                     && request.resource.data.role == 'customer';
 
-      // Profile updates allowed but role field must not change.
+      // Admin creating a staff/rider account.
+      allow create: if isAdmin()
+                    && (request.resource.data.role == 'employee'
+                        || request.resource.data.role == 'rider');
+
+      // Profile updates — role field must not change.
       allow update: if isOwner(uid)
                     && request.resource.data.role == resource.data.role;
 
@@ -36,27 +54,30 @@ service cloud.firestore {
 
     // ── menuItems ─────────────────────────────────────────────────────────────
     match /menuItems/{itemId} {
-      // Any authenticated user may read the menu.
       allow read: if isAuthenticated();
-
-      // Only admins may create, update, or delete menu items.
       allow write: if isAdmin();
     }
 
     // ── orders ────────────────────────────────────────────────────────────────
     match /orders/{orderId} {
-      // Customers see only their own orders; admins see all.
+      // Customers see their own; staff and riders see all.
       allow read: if isAuthenticated()
-                  && (resource.data.customerId == request.auth.uid || isAdmin());
+                  && (resource.data.customerId == request.auth.uid
+                      || isStaff()
+                      || isRider());
 
-      // Customers may place an order only for themselves.
+      // Only customers may place an order for themselves.
       allow create: if isAuthenticated()
-                    && request.resource.data.customerId == request.auth.uid;
+                    && request.resource.data.customerId == request.auth.uid
+                    && getRole() == 'customer';
 
-      // Only admins/staff may advance the order status or verify payment.
-      allow update: if isAdmin();
+      // Staff (admin/employee) can update any order field.
+      // Riders can only update status and updatedAt.
+      allow update: if isStaff()
+                    || (isRider()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status', 'updatedAt']));
 
-      // Orders are never deleted.
       allow delete: if false;
     }
   }

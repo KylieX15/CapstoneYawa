@@ -6,10 +6,14 @@ This document explains everything we did from the very beginning, in plain langu
 
 ## The Big Picture
 
-We are building a mobile ordering system for Dindo's Restaurant. The app has two types of users:
+We are building a mobile ordering system for Dindo's Restaurant. The app has four types of users:
 
 - **Customer** — browses the menu, places orders, tracks delivery
-- **Admin/Staff** — manages the menu, accepts orders, updates order status
+- **Admin** — full control: manages menu, inventory, orders, and staff accounts
+- **Employee** — processes and updates orders (no menu or account management)
+- **Rider** — views assigned deliveries and updates delivery status
+
+All four roles share the same app. After logging in, the app reads the user's role from the database and automatically sends them to the correct home screen.
 
 We are building it using **Flutter** (one codebase for Android and iOS) and **Firebase** (Google's cloud platform for storing data and handling login).
 
@@ -64,6 +68,8 @@ This is like a unique username for your app on the Google Play Store and on Fire
 
 We also made sure the **Google Services plugin** (which connects Android to Firebase) is NOT manually added here — instead it gets added automatically when you run `flutterfire configure`. Adding it early caused a build error because it looks for a config file that doesn't exist yet.
 
+We also moved `MainActivity.kt` to the correct package folder `com/dindos/restaurant/` to match the application ID. A mismatch here causes an immediate crash on launch.
+
 ---
 
 ## Step 4 — Firebase Setup (the Cloud Side)
@@ -87,7 +93,7 @@ users/
   {uid}/              ← one document per user
     name: "Juan"
     email: "juan@gmail.com"
-    role: "customer"  ← or "admin"
+    role: "customer"  ← customer | admin | employee | rider
     phone: "09..."
     createdAt: ...
 
@@ -153,7 +159,7 @@ UserModel {
   name
   email
   phone
-  role      ← "customer" or "admin"
+  role      ← "customer" | "admin" | "employee" | "rider"
   createdAt
 }
 ```
@@ -168,16 +174,19 @@ It has two important methods:
 
 [lib/services/auth_service.dart](lib/services/auth_service.dart) is a class that handles all login-related actions. It talks to Firebase so the rest of your app doesn't have to.
 
-It has four methods:
+It has five methods:
 
 | Method | What it does |
 |---|---|
-| `signUp(name, email, password, phone)` | Creates a Firebase Auth account AND writes a document to `users/{uid}` with `role: 'customer'` |
+| `signUp(name, email, password, phone)` | Customer self-registration — always assigns `role: 'customer'` |
 | `signIn(email, password)` | Logs the user in via Firebase Auth |
 | `signOut()` | Logs the user out |
 | `getUserModel(uid)` | Reads `users/{uid}` from Firestore and returns a `UserModel` |
+| `createStaffAccount(name, email, password, phone, role)` | Admin creates an employee or rider account without being signed out |
 
-**Important security note:** New users are always assigned `role: 'customer'` by the code. There is no way for a user to register as an admin. Admin accounts are created manually in the Firebase Console.
+**How createStaffAccount works:** Creating a Firebase account normally signs you in as that new user, which would kick the admin out. To avoid this, we create a temporary second Firebase connection just for account creation, then close it. The admin stays logged in the whole time.
+
+**Security note:** Customers can only self-register. Employee and rider accounts can only be created by an admin through the app. Admin accounts are created manually in the Firebase Console.
 
 ---
 
@@ -200,7 +209,7 @@ Watches Firebase's login stream. It emits:
 Any widget that watches this automatically reacts when a user logs in or out.
 
 ### `currentUserProvider`
-Once a user is logged in, this fetches their Firestore document and returns the full `UserModel` (including their `role`). This is what the app uses to decide whether to show the customer screen or the admin screen.
+Once a user is logged in, this fetches their Firestore document and returns the full `UserModel` (including their `role`). Uses `.future` to properly wait for the auth stream to be ready before fetching — this prevents a race condition where the app redirects to login before Firebase has finished checking credentials.
 
 ---
 
@@ -223,8 +232,10 @@ Watches `authStateProvider`:
 
 ### RoleRouter
 Watches `currentUserProvider` (fetches the user's role from Firestore):
-- If `role == 'admin'` → shows `AdminHomeScreen`
-- Otherwise → shows `CustomerHomeScreen`
+- `role == 'admin'` → `AdminHomeScreen`
+- `role == 'employee'` → `EmployeeHomeScreen`
+- `role == 'rider'` → `RiderHomeScreen`
+- anything else → `CustomerHomeScreen`
 - While loading → shows the splash screen
 
 This means the app **automatically navigates** when you log in or log out — no manual navigation code needed.
@@ -241,7 +252,7 @@ This means the app **automatically navigates** when you log in or log out — no
 - Error banner if login fails (e.g. "Invalid email or password.")
 - Link to the Register screen
 
-When the user taps Sign In, it calls `AuthService.signIn()`. If successful, `authStateProvider` automatically detects the login and `AuthWrapper` navigates the user to their home screen.
+When the user taps Sign In, it calls `AuthService.signIn()`. If successful, `authStateProvider` automatically detects the login and `AuthWrapper` navigates the user to their role's home screen.
 
 ---
 
@@ -260,14 +271,19 @@ Then `AuthWrapper` detects the new login and automatically navigates to `Custome
 
 ---
 
-## Step 13 — Home Screens (placeholders for now)
+## Step 13 — Home Screens
 
-We created two placeholder home screens:
+We created four home screens — one per role:
 
-- [lib/screens/customer/customer_home_screen.dart](lib/screens/customer/customer_home_screen.dart) — shows a welcome message and a logout button. Will become the full menu browsing experience in Phase 3.
-- [lib/screens/admin/admin_home_screen.dart](lib/screens/admin/admin_home_screen.dart) — shows three feature cards (Menu, Orders, Delivery). Will become the full admin dashboard in Phase 2.
+| Screen | Role | Location |
+|---|---|---|
+| [CustomerHomeScreen](lib/screens/customer/customer_home_screen.dart) | customer | Shows welcome + logout. Will become full menu in Phase 3. |
+| [AdminHomeScreen](lib/screens/admin/admin_home_screen.dart) | admin | Shows Menu, Orders, Inventory, and Manage Accounts cards. |
+| [EmployeeHomeScreen](lib/screens/employee/employee_home_screen.dart) | employee | Shows Orders and Menu cards. |
+| [RiderHomeScreen](lib/screens/rider/rider_home_screen.dart) | rider | Shows My Deliveries and Delivery History cards. |
 
-These placeholders confirm that role-based routing is working correctly before we build the real content.
+### Admin — Manage Accounts
+The Admin dashboard has a **Manage Accounts** card that opens [CreateStaffScreen](lib/screens/admin/create_staff_screen.dart). The admin fills in the new staff member's name, email, phone, and password, then selects **Employee** or **Rider**. The account is created immediately and the staff member can log in on any device.
 
 ---
 
@@ -281,11 +297,17 @@ Here is a summary of the rules:
 
 | Collection | Who can read | Who can write |
 |---|---|---|
-| `users/{uid}` | The user themselves OR an admin | Users can create their own doc (with `role: 'customer'` only). Users can update their own profile (but cannot change their role). Admins can delete. |
-| `menuItems/{id}` | Any logged-in user | Admins only |
-| `orders/{id}` | The customer who placed it OR an admin | Customers can create orders for themselves. Admins can update order status. Nobody can delete orders. |
+| `users/{uid}` | Owner of the doc OR admin | Customers self-create (role must be 'customer'). Admin creates employee/rider accounts. Users can update their own profile but cannot change their role. |
+| `menuItems/{id}` | Any logged-in user | Admin only |
+| `orders/{id}` | The customer who placed it, any staff, or any rider | Customers create their own orders only. Staff (admin + employee) can update any field. Riders can only update `status` and `updatedAt`. Nobody can delete orders. |
 
-The rules use helper functions like `isAdmin()` which reads the user's role directly from Firestore — this means a user cannot fake being an admin by modifying data on their phone.
+Helper functions used in the rules:
+- `isAdmin()` — checks role is 'admin'
+- `isEmployee()` — checks role is 'employee'
+- `isRider()` — checks role is 'rider'
+- `isStaff()` — true if admin OR employee
+
+The role is read directly from Firestore inside the rules — the user cannot fake their role by modifying data on their phone.
 
 ---
 
@@ -293,10 +315,10 @@ The rules use helper functions like `isAdmin()` which reads the user's role dire
 
 The security rules file lives in our project folder but needs to be uploaded to Firebase to take effect.
 
-We fixed `firebase.json` to tell Firebase where the rules file is, then ran:
+We updated `firebase.json` to tell Firebase where the rules file is, then ran:
 
 ```
-npx firebase-tools deploy --only firestore:rules
+npx firebase-tools deploy --only firestore:rules --project dindos-restaurant
 ```
 
 This uploads `firestore.rules` to the cloud. From that point on, every read/write to the database is checked against those rules.
@@ -311,17 +333,30 @@ User opens app
 main.dart initializes Firebase
     ↓
 AuthWrapper checks: is anyone logged in? (authStateProvider)
-    ↓                              ↓
-   No → LoginScreen           Yes → RoleRouter
-           ↓                          ↓
-    Register / Login        Fetch role from Firestore (currentUserProvider)
-           ↓                    ↓               ↓
-    Firebase Auth          role=admin      role=customer
-    creates session            ↓               ↓
-           ↓             AdminHomeScreen  CustomerHomeScreen
-    AuthWrapper detects
-    login → RoleRouter
+    ↓                                ↓
+   No → LoginScreen             Yes → RoleRouter
+         ↓                             ↓
+  Register / Login      Fetch role from Firestore (currentUserProvider)
+         ↓                ↓           ↓           ↓          ↓
+  Firebase Auth       admin       employee      rider     customer
+  creates session       ↓           ↓             ↓          ↓
+         ↓          AdminHome  EmployeeHome   RiderHome  CustomerHome
+  AuthWrapper
+  detects login
+  → RoleRouter
 ```
+
+---
+
+## How to Create Staff Accounts
+
+1. Log in as **admin**
+2. Tap **Manage Accounts** on the admin dashboard
+3. Select **Employee** or **Rider**
+4. Fill in name, email, phone, and password
+5. Tap **Create Account**
+
+The new staff member can now log in on any device with the email and password you set.
 
 ---
 
@@ -329,6 +364,6 @@ AuthWrapper checks: is anyone logged in? (authStateProvider)
 
 Now that the foundation is working, Phase 2 will build the **Menu & Inventory** system:
 - Admin can add, edit, and delete menu items
-- Admin can mark items as sold out
 - Admin can upload a photo for each menu item
+- Admin can mark items as sold out (available toggle)
 - Customers can see the live menu (built in Phase 3)

@@ -5,7 +5,11 @@ class UserModel {
   final String name;
   final String email;
   final String phone;
-  final String role; // 'customer' | 'admin'
+  final String role; // 'customer' | 'admin' | 'employee' | 'rider'
+  // admin: full control (menu, orders, accounts)
+  // employee: process orders only
+  // rider: view & update assigned deliveries
+  // customer: browse, order, track
   final DateTime createdAt;
 
   const UserModel({
