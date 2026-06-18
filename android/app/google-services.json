@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "367375712412",
+    "project_id": "dindos-restaurant",
+    "storage_bucket": "dindos-restaurant.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:367375712412:android:b757f26172139e8baaad59",
+        "android_client_info": {
+          "package_name": "com.dindos.restaurant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTBVYq1XoA7KRNCT44a2f27aFJttLSQmg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

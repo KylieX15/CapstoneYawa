@@ -1,0 +1,26 @@
+One-time Firebase setup (do this first)
+1. Create the Firebase project
+Go to console.firebase.google.com → Add project → name it dindos-restaurant. Then inside the project enable:
+
+Authentication → Sign-in method → Email/Password → Enable
+Firestore Database → Create database → Start in test mode → pick a region (e.g. asia-southeast1)
+Storage → Get started → test mode
+2. Open a PowerShell terminal in your project folder and run these four commands in order:
+
+
+# Add flutterfire to PATH (only needed once)
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Users\justi\AppData\Local\Pub\Cache\bin", "User")
+Close PowerShell, reopen it, then:
+
+
+# Log in to Firebase (opens browser)
+firebase login
+
+# Connect your Flutter project to Firebase (interactive — pick your project + Android)
+cd C:\Users\justi\CapstoneYawa
+flutterfire configure
+
+# Run the app
+flutter run
+
+flutter clean && flutter pub get && flutter run

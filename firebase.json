@@ -1,0 +1,29 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dindos-restaurant",
+          "appId": "1:367375712412:android:b757f26172139e8baaad59",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dindos-restaurant",
+          "configurations": {
+            "android": "1:367375712412:android:b757f26172139e8baaad59",
+            "ios": "1:367375712412:ios:3d49c92d793f4fd6aaad59",
+            "macos": "1:367375712412:ios:3d49c92d793f4fd6aaad59",
+            "web": "1:367375712412:web:dad5e8e2dbc5b908aaad59",
+            "windows": "1:367375712412:web:c701c5b502f4e207aaad59"
+          }
+        }
+      }
+    }
+  }
+}
